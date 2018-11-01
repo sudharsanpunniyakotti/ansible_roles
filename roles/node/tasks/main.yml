@@ -1,0 +1,68 @@
+---
+# tasks file for node
+
+- name: installing git curl
+  yum:
+   name: "{{ item }}"
+   state: present
+  with_items:
+         - git
+         - make
+         - curl
+         - gcc-c++
+         - openssl-devel
+  become: true
+
+- name: installing nodejs source code
+  shell: curl --silent --location https://rpm.nodesource.com/setup_6.x | sudo bash -
+  become: true
+
+
+- name: Installing nodejs and npm
+  yum: name=nodejs state=installed
+  become: true
+
+
+- name: Install packages
+  npm: name=pm2 global=true
+  become: true
+
+
+- name: Download Apache Maven
+  get_url: url=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.2.5/apache-maven-3.2.5-bin.tar.gz  dest=/tmp/apache-maven-3.2.5-bin.tar.gz
+
+
+- name: Untar Maven
+  shell: tar -xvf /tmp/apache-maven-3.2.5-bin.tar.gz -C /tmp/
+
+- name: move the package
+  shell: sudo rm -rf /opt/maven && sudo mv /tmp/apache-maven-3.2.5 /opt/maven  && sudo chown app:app /opt/maven && sudo chown app:app /opt/maven/*
+
+- name: Update path for maven use
+  shell: export M3_HOME=/opt/maven ; export PATH=${M3_HOME}/bin:${PATH}
+
+- name: add the .bashrc_profile
+  lineinfile: path=/app/.bash_profile line='export M3_HOME=/opt/maven \nexport PATH=${M3_HOME}/bin:${PATH}'
+
+- name: Find the version of nodejs
+  shell: node -v
+  register: node_v
+  
+- debug:
+    var: node_v.stdout_lines
+
+
+- name : display npm version
+  shell: npm -var
+  register: npm_v
+
+- debug:
+    var: npm_v.stdout_lines
+
+- name: display mvn version
+  shell: mvn -v
+  register: mvn_v
+
+- debug:
+    var: mvn_v.stdout_lines
+

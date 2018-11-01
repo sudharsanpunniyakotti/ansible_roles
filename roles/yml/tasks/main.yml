@@ -1,0 +1,55 @@
+---
+# tasks file for yml
+
+- name: Create a directory
+  file: path=$WORKSPACE/tmp/scrnsht state=directory mode=0777 
+  
+- name: Exporting the Nodejs variables
+  command: export NODE_ENV=qa ./node_modules/.bin/mocha --require mocha-steps test/Grocery/Regression/Registration.js -R mocha-allure-reporter
+   
+- name: Curl the URL
+  command: curl -L "XXXXXXXXXX/nexus/content/groups/public/io/qameta/allure/allure/2.4.1/allure-2.4.1.tgz" -o allure-2.4.1.tar
+   
+- name: Untar the package
+  command: tar -xvf $WORKSPACE/allure-2.4.1.tar -C $WORKSPACE/
+   
+- name: check the version
+  shell : $WORKSPACE/allure-2.4.1/bin/allure --version 
+  register: allure_v
+   
+- debug:  
+    var: allure_v.stdout.lines
+- name: check directory exists example.
+  stat: path=$WORKSPACE/allure-report
+  register: file_details
+
+- name: Copy the file 
+  command: cp -R $WORKSPACE/allure-report/history $WORKSPACE/allure-results/
+  when: file_details.stat.exists
+
+- name: Clean the report 
+  command: $WORKSPACE/allure-2.4.1/bin/allure generate --clean $WORKSPACE/allure-results/
+ 
+- name: remove the diretory
+  file: path=$WORKSPACE/target/site state=absent
+   
+- name: Create the Directory
+  file: path=$WORKSPACE/target/site state=directory
+  
+- name:  Create symlink
+  file: src=$WORKSPACE/allure-report dest=$WORKSPACE/target/site/mexapi-gr-allure-report state=link
+   
+- name: run the mvn
+  shell: mvn site:site site:deploy
+ 
+- name: run the mvn1
+  shell: mvn emma:emma
+   
+- name: Untar with Build Number
+  shell: tar -zcvf ${BUILD_NUMBER}_package.tgz allure-results/
+   
+- name: execute the mvn
+  shell: mvn -X -e deploy:deploy-file -Durl='XXXXXXXX/nexus/content/repositories/pangaea_snapshots' -DrepositoryId='pangaea_snapshots' -DgroupId=com.mexico-${appname} -DartifactId=${branchName} -Dversion=1.0.0-SNAPSHOT -Dpackaging=tgz -Dfile="${BUILD_NUMBER}_package.tgz"
+   
+- name: run the node.js
+  shell: node screenShot.js
